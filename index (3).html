@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>REST API — ДБЖ Діагностика</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f8fafc; color: #1e293b; }
+
+    header { background: #1e293b; color: #fff; padding: 32px 40px; }
+    header h1 { font-size: 1.6rem; margin-bottom: 6px; }
+    header p  { color: #94a3b8; font-size: .9rem; }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+
+    /* Tester */
+    .tester {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.07);
+      padding: 28px;
+      margin-bottom: 32px;
+    }
+    .tester h2 { font-size: 1.1rem; margin-bottom: 18px; padding-bottom: 10px; border-bottom: 2px solid #3b82f6; }
+    .tester-row { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+    select, input, textarea {
+      padding: 9px 12px; border: 2px solid #e2e8f0; border-radius: 6px;
+      font-family: inherit; font-size: .88rem; color: #1e293b;
+    }
+    select:focus, input:focus, textarea:focus { outline: none; border-color: #3b82f6; }
+    #methodSel { width: 100px; font-weight: 700; }
+    #urlInput  { flex: 1; min-width: 200px; font-family: 'Courier New', monospace; }
+    textarea   { width: 100%; min-height: 90px; resize: vertical; font-family: 'Courier New', monospace; font-size: .82rem; }
+    .btn-send  { padding: 9px 24px; background: #3b82f6; color: #fff; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: .9rem; }
+    .btn-send:hover { background: #2563eb; }
+    .response-box {
+      margin-top: 14px; background: #0f172a; color: #e2e8f0;
+      border-radius: 8px; padding: 16px; font-family: 'Courier New', monospace;
+      font-size: .82rem; white-space: pre-wrap; max-height: 320px; overflow-y: auto;
+      min-height: 48px;
+    }
+    .status-ok  { color: #4ade80; }
+    .status-err { color: #f87171; }
+
+    /* Quick buttons */
+    .quick { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .qbtn {
+      padding: 5px 12px; border: none; border-radius: 4px; cursor: pointer;
+      font-size: .78rem; font-weight: 600;
+    }
+    .qbtn-get    { background: #dbeafe; color: #1d4ed8; }
+    .qbtn-post   { background: #dcfce7; color: #166534; }
+    .qbtn-put    { background: #fef9c3; color: #854d0e; }
+    .qbtn-delete { background: #fee2e2; color: #991b1b; }
+
+    /* Docs */
+    .docs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .endpoint-group { background: #fff; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,.07); padding: 24px; }
+    .endpoint-group h3 { font-size: 1rem; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; }
+    .ep { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; font-size: .85rem; }
+    .method { padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: .75rem; flex-shrink: 0; margin-top: 1px; }
+    .m-get    { background: #dbeafe; color: #1d4ed8; }
+    .m-post   { background: #dcfce7; color: #166534; }
+    .m-put    { background: #fef9c3; color: #854d0e; }
+    .m-delete { background: #fee2e2; color: #991b1b; }
+    .ep-path  { font-family: 'Courier New', monospace; color: #475569; }
+    .ep-desc  { color: #64748b; font-size: .8rem; margin-top: 2px; }
+
+    @media (max-width: 700px) {
+      .docs-grid { grid-template-columns: 1fr; }
+      header { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🔌 REST API — Система діагностики ДБЖ</h1>
+    <p>Варіант 12 · Практична робота №4 · Node.js + Express</p>
+  </header>
+
+  <div class="container">
+
+    <!-- API Tester -->
+    <div class="tester">
+      <h2>🧪 API Тестер</h2>
+
+      <div class="quick">
+        <button class="qbtn qbtn-get"    onclick="q('GET','/api/ups','')">GET всі ДБЖ</button>
+        <button class="qbtn qbtn-get"    onclick="q('GET','/api/ups/stats','')">GET статистика ДБЖ</button>
+        <button class="qbtn qbtn-post"   onclick="q('POST','/api/ups',JSON.stringify({model:'APC Smart-UPS 1500',serialNumber:'SUA1500-001',powerKva:1.5,location:'ПС-110 кВ Північна',batteryCapacityAh:18,installDate:'2023-05-10',status:'active'},null,2))">POST новий ДБЖ</button>
+        <button class="qbtn qbtn-get"    onclick="q('GET','/api/diagnostics','')">GET всі діагностики</button>
+        <button class="qbtn qbtn-get"    onclick="q('GET','/api/diagnostics/stats','')">GET статистика діагностик</button>
+        <button class="qbtn qbtn-post"   onclick="q('POST','/api/diagnostics',JSON.stringify({upsId:'REPLACE_ID',diagnosticDate:'2025-05-16',result:'warning',batteryHealth:72,inputVoltage:224,outputVoltage:220,loadPercent:65,notes:'Знижена ємність батареї'},null,2))">POST нова діагностика</button>
+      </div>
+
+      <div class="tester-row">
+        <select id="methodSel">
+          <option>GET</option><option>POST</option>
+          <option>PUT</option><option>DELETE</option>
+        </select>
+        <input id="urlInput" type="text" value="/api/ups" placeholder="/api/ups" />
+        <button class="btn-send" onclick="sendRequest()">▶ Відправити</button>
+      </div>
+
+      <textarea id="bodyInput" placeholder='Тіло запиту JSON (для POST / PUT)&#10;{"model": "APC Smart-UPS 1500", ...}'></textarea>
+
+      <div id="responseBox" class="response-box">← Тут з'явиться відповідь сервера</div>
+    </div>
+
+    <!-- Docs -->
+    <div class="docs-grid">
+      <div class="endpoint-group">
+        <h3>📦 /api/ups — Пристрої ДБЖ</h3>
+        <div class="ep"><span class="method m-get">GET</span><div><div class="ep-path">/api/ups</div><div class="ep-desc">Список усіх пристроїв. ?status= ?location=</div></div></div>
+        <div class="ep"><span class="method m-get">GET</span><div><div class="ep-path">/api/ups/stats</div><div class="ep-desc">Статистика (кількість, потужність)</div></div></div>
+        <div class="ep"><span class="method m-get">GET</span><div><div class="ep-path">/api/ups/:id</div><div class="ep-desc">Один пристрій за ID</div></div></div>
+        <div class="ep"><span class="method m-post">POST</span><div><div class="ep-path">/api/ups</div><div class="ep-desc">Додати пристрій</div></div></div>
+        <div class="ep"><span class="method m-put">PUT</span><div><div class="ep-path">/api/ups/:id</div><div class="ep-desc">Оновити пристрій</div></div></div>
+        <div class="ep"><span class="method m-delete">DELETE</span><div><div class="ep-path">/api/ups/:id</div><div class="ep-desc">Видалити пристрій</div></div></div>
+      </div>
+      <div class="endpoint-group">
+        <h3>🔧 /api/diagnostics — Діагностика</h3>
+        <div class="ep"><span class="method m-get">GET</span><div><div class="ep-path">/api/diagnostics</div><div class="ep-desc">Всі записи. ?result= ?upsId=</div></div></div>
+        <div class="ep"><span class="method m-get">GET</span><div><div class="ep-path">/api/diagnostics/stats</div><div class="ep-desc">Статистика за результатами</div></div></div>
+        <div class="ep"><span class="method m-get">GET</span><div><div class="ep-path">/api/diagnostics/:id</div><div class="ep-desc">Один запис за ID</div></div></div>
+        <div class="ep"><span class="method m-post">POST</span><div><div class="ep-path">/api/diagnostics</div><div class="ep-desc">Додати запис діагностики</div></div></div>
+        <div class="ep"><span class="method m-put">PUT</span><div><div class="ep-path">/api/diagnostics/:id</div><div class="ep-desc">Оновити запис</div></div></div>
+        <div class="ep"><span class="method m-delete">DELETE</span><div><div class="ep-path">/api/diagnostics/:id</div><div class="ep-desc">Видалити запис</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function q(method, url, body) {
+      document.getElementById('methodSel').value = method;
+      document.getElementById('urlInput').value  = url;
+      document.getElementById('bodyInput').value = body;
+    }
+
+    async function sendRequest() {
+      const method = document.getElementById('methodSel').value;
+      const url    = document.getElementById('urlInput').value.trim();
+      const body   = document.getElementById('bodyInput').value.trim();
+      const box    = document.getElementById('responseBox');
+
+      box.textContent = '⏳ Відправляємо запит…';
+      box.className   = 'response-box';
+
+      try {
+        const opts = { method, headers: {} };
+        if (body && method !== 'GET') {
+          opts.headers['Content-Type'] = 'application/json';
+          opts.body = body;
+        }
+        const res  = await fetch(url, opts);
+        const data = await res.json();
+        const pretty = JSON.stringify(data, null, 2);
+        box.textContent = `HTTP ${res.status} ${res.statusText}\n\n${pretty}`;
+        box.className   = 'response-box ' + (res.ok ? 'status-ok' : 'status-err');
+      } catch (err) {
+        box.textContent = `Помилка: ${err.message}`;
+        box.className   = 'response-box status-err';
+      }
+    }
+  </script>
+</body>
+</html>
